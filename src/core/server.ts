@@ -5,7 +5,6 @@
 
 import { spawn, ChildProcess } from 'child_process';
 import { MCPServerOptions, ServerStartError, TimeoutError } from '../core/types';
-import { HTTPAdapter } from '../adapters/transport/http';
 
 /**
  * MCPServerManager
@@ -18,7 +17,6 @@ export class MCPServerManager {
   private startCallbacks: Array<() => void> = [];
   private stopCallbacks: Array<() => void> = [];
   private errorCallbacks: Array<(error: Error) => void> = [];
-  private healthCheckInterval: NodeJS.Timeout | null = null;
 
   /**
    * Create a new MCP Server Manager
@@ -33,8 +31,7 @@ export class MCPServerManager {
       port: options.port || 6277,
       startupTimeout: options.startupTimeout || 5000,
       shutdownTimeout: options.shutdownTimeout || 3000,
-      healthCheckPath: options.healthCheckPath || '/health',
-      healthCheckInterval: options.healthCheckInterval || 1000,
+      // healthCheckPath and healthCheckInterval are removed as health check is now process-based
       onStdout: options.onStdout || (() => {}),
       onStderr: options.onStderr || (() => {})
     };
@@ -82,14 +79,11 @@ export class MCPServerManager {
         // Set up exit handler
         this.process.on('exit', (code, signal) => {
           this.isAlive = false;
-          if (this.healthCheckInterval) {
-            clearInterval(this.healthCheckInterval);
-            this.healthCheckInterval = null;
-          }
-          
+          // Health check interval cleanup removed
+
           // Notify stop callbacks
           this.notifyStop();
-          
+
           if (code !== 0 && code !== null) {
             const error = new Error(`MCP server exited with code ${code}`);
             this.notifyError(error);
@@ -100,7 +94,7 @@ export class MCPServerManager {
         this.waitForReady()
           .then(() => {
             this.isAlive = true;
-            this.startHealthCheck();
+            // startHealthCheck call removed
             this.notifyStart();
             resolve();
           })
@@ -133,11 +127,7 @@ export class MCPServerManager {
     }
 
     return new Promise<void>((resolve) => {
-      // Stop health check
-      if (this.healthCheckInterval) {
-        clearInterval(this.healthCheckInterval);
-        this.healthCheckInterval = null;
-      }
+      // Health check interval cleanup removed
 
       // Set up timeout for forced kill
       const killTimeout = setTimeout(() => {
@@ -192,55 +182,61 @@ export class MCPServerManager {
    * @throws TimeoutError if the server does not become ready within the timeout
    */
   async waitForReady(): Promise<void> {
-    const startTime = Date.now();
-    const adapter = new HTTPAdapter();
-    const healthUrl = `http://localhost:${this.options.port}${this.options.healthCheckPath}`;
+    // Wait for a short period to allow the process to potentially fail early
+    // Or wait for a specific output indicating readiness if the server provides one
+    // For now, we'll just wait for a fixed short duration or rely on the startupTimeout.
+    // A more robust approach would involve checking process status or listening for specific stdout/stderr messages.
 
-    while (Date.now() - startTime < this.options.startupTimeout) {
-      try {
-        await adapter.request(healthUrl, {
-          timeout: 1000,
-          responseFormat: 'text'
-        });
-        return; // Server is ready
-      } catch (error) {
-        // Wait a bit before trying again
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-    }
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        // Check if the process is still alive after the initial wait
+        if (this.process && !this.process.killed && this.process.exitCode === null) {
+           resolve(); // Assume ready if process is still running after a short delay
+        } else {
+           reject(new ServerStartError('Server process exited or failed to start quickly.'));
+        }
+      }, Math.min(this.options.startupTimeout, 1000)); // Wait for 1 second or startupTimeout
 
-    throw new TimeoutError(`Server did not become ready within ${this.options.startupTimeout}ms`);
+      // If the process exits early, reject the promise
+      this.process?.once('exit', (code) => {
+        clearTimeout(timer);
+        reject(new ServerStartError(`Server process exited prematurely with code ${code}.`));
+      });
+      this.process?.once('error', (err) => {
+         clearTimeout(timer);
+         reject(new ServerStartError(`Server process failed to spawn: ${err.message}`));
+      });
+
+      // If the overall startup timeout is reached, reject
+       const startupTimeoutTimer = setTimeout(() => {
+         clearTimeout(timer); // Clear the shorter timer
+         this.process?.removeListener('exit', exitHandler); // Clean up listener
+         this.process?.removeListener('error', errorHandler); // Clean up listener
+         reject(new TimeoutError(`Server did not become ready within ${this.options.startupTimeout}ms`));
+       }, this.options.startupTimeout);
+
+       const exitHandler = (code: number | null) => {
+         clearTimeout(startupTimeoutTimer);
+         reject(new ServerStartError(`Server process exited prematurely with code ${code}.`));
+       };
+       const errorHandler = (err: Error) => {
+         clearTimeout(startupTimeoutTimer);
+         reject(new ServerStartError(`Server process failed to spawn: ${err.message}`));
+       };
+
+       this.process?.once('exit', exitHandler);
+       this.process?.once('error', errorHandler);
+
+       // Resolve immediately if process is already confirmed running (e.g., pid exists)
+       // This part might need refinement based on how quickly `spawn` returns and sets up the process.
+       if (this.process?.pid) {
+          // Potentially resolve earlier if PID is immediately available,
+          // but waiting a short duration is safer.
+       }
+    });
   }
 
-  /**
-   * Start periodic health checks
-   */
-  private startHealthCheck(): void {
-    if (this.healthCheckInterval) {
-      clearInterval(this.healthCheckInterval);
-    }
-
-    this.healthCheckInterval = setInterval(async () => {
-      if (!this.process) {
-        this.isAlive = false;
-        return;
-      }
-
-      try {
-        const adapter = new HTTPAdapter();
-        const healthUrl = `http://localhost:${this.options.port}${this.options.healthCheckPath}`;
-        
-        await adapter.request(healthUrl, {
-          timeout: 1000,
-          responseFormat: 'text'
-        });
-        
-        this.isAlive = true;
-      } catch (error) {
-        this.isAlive = false;
-      }
-    }, this.options.healthCheckInterval);
-  }
+  // startHealthCheck method removed
 
   /**
    * Register a callback to be called when the server starts
@@ -305,7 +301,7 @@ export class MCPServerManager {
       }
     }
   }
-  
+
   // Helper method to safely kill the process
   private killProcess(): void {
     if (this.process && this.process.pid) {

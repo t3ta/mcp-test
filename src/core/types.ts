@@ -129,10 +129,7 @@ export interface MCPServerOptions {
   startupTimeout?: number;
   /** Timeout for server shutdown in milliseconds */
   shutdownTimeout?: number;
-  /** Path for health check */
-  healthCheckPath?: string;
-  /** Interval for health checks in milliseconds */
-  healthCheckInterval?: number;
+  // healthCheckPath and healthCheckInterval removed
   /** Callback for stdout data */
   onStdout?: (data: string) => void;
   /** Callback for stderr data */
@@ -160,7 +157,7 @@ export interface TransportAdapter {
    * @returns Promise resolving to the response
    */
   request<T = any>(url: string, options: RequestOptions): Promise<T>;
-  
+
   /**
    * Open a stream to the MCP server
    * @param url Stream URL
@@ -168,7 +165,7 @@ export interface TransportAdapter {
    * @returns AsyncGenerator yielding stream events
    */
   openStream(url: string, options: RequestOptions): AsyncGenerator<any, void, unknown>;
-  
+
   /**
    * Close the transport
    */
@@ -181,34 +178,34 @@ export interface TransportAdapter {
 export interface MCPTestPlugin {
   /** Plugin name */
   name: string;
-  
+
   /**
    * Initialize the plugin
    * @param context Plugin context
    */
   initialize(context: PluginContext): void;
-  
+
   /**
    * Hook called before sending a request
    * @param request Request options
    * @returns Modified request options
    */
   beforeRequest?(request: RequestOptions): RequestOptions;
-  
+
   /**
    * Hook called after receiving a response
    * @param response Response data
    * @returns Modified response data
    */
   afterResponse?(response: any): any;
-  
+
   /**
    * Hook called before starting the server
    * @param options Server options
    * @returns Modified server options
    */
   beforeServerStart?(options: MCPServerOptions): MCPServerOptions;
-  
+
   /**
    * Hook called after stopping the server
    */
@@ -235,28 +232,28 @@ export interface Logger {
    * @param args Additional arguments
    */
   debug(message: string, ...args: any[]): void;
-  
+
   /**
    * Log info message
    * @param message Message to log
    * @param args Additional arguments
    */
   info(message: string, ...args: any[]): void;
-  
+
   /**
    * Log warning message
    * @param message Message to log
    * @param args Additional arguments
    */
   warn(message: string, ...args: any[]): void;
-  
+
   /**
    * Log error message
    * @param message Message to log
    * @param args Additional arguments
    */
   error(message: string, ...args: any[]): void;
-  
+
   /**
    * Set log level
    * @param level Log level
@@ -284,7 +281,7 @@ export class MCPTestError extends Error {
   details?: any;
   /** Original error that caused this error */
   cause?: Error;
-  
+
   /**
    * Create a new MCP Test Error
    * @param message Error message

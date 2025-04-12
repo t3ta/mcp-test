@@ -105,8 +105,8 @@ interface MCPServerOptions {
   port?: number;
   startupTimeout?: number;
   shutdownTimeout?: number;
-  healthCheckPath?: string;
-  healthCheckInterval?: number;
+  // Note: HTTP health check options (healthCheckPath, healthCheckInterval) have been removed.
+  // Server readiness is now determined by process status and startup timeout.
   onStdout?: (data: string) => void;
   onStderr?: (data: string) => void;
 }
@@ -313,8 +313,7 @@ const defaultConfig = {
   server: {
     startupTimeout: 5000,
     shutdownTimeout: 3000,
-    healthCheckPath: "/health",
-    healthCheckInterval: 1000,
+    // healthCheckPath and healthCheckInterval removed from default config
   },
   async: {
     defaultTimeout: 30000,
