@@ -21,7 +21,7 @@
     "build": "tsup",
     "test": "vitest run",
     "lint": "eslint src",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "pnpm run build"
   },
   "keywords": [
     "mcp",
@@ -40,5 +40,8 @@
     "eslint": "^8.0.0",
     "vitest": "^1.0.0",
     "@types/node": "^20.0.0"
+  },
+  "dependencies": {
+    "sass": "^1.70.0"
   }
 }
