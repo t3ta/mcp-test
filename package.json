@@ -1,5 +1,5 @@
 {
-  "name": "mcp-test",
+  "name": "@t3ta/mcp-test",
   "version": "0.1.0",
   "description": "A comprehensive testing library for Model Context Protocol (MCP) servers",
   "main": "dist/index.js",
