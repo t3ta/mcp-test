@@ -32,14 +32,14 @@
   "author": "t3ta",
   "license": "MIT",
   "peerDependencies": {
-    "vitest": "^1.0.0"
+    "vitest": "^3.1.1"
   },
   "devDependencies": {
-    "typescript": "^5.0.0",
-    "tsup": "^7.0.0",
+    "@types/node": "^20.0.0",
     "eslint": "^8.0.0",
-    "vitest": "^1.0.0",
-    "@types/node": "^20.0.0"
+    "tsup": "^7.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^3.1.1"
   },
   "dependencies": {
     "sass": "^1.70.0"
