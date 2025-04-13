@@ -32,10 +32,11 @@ export {
 // Utility exports
 export { AsyncHelpers } from './utils/async';
 export { ResponseValidator } from './utils/validators';
+export { MCPValidator, MCPValidationOptions } from './utils/mcp-validators';
 export { TestFixtures } from './utils/fixtures';
 
 // Adapter exports
 export { HTTPAdapter, HTTPAdapterOptions } from './adapters/transport/http';
 
 // Version information
-export const VERSION = '0.1.0';
+export const VERSION = '0.1.2';
