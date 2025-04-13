@@ -1,6 +1,18 @@
 /**
- * HTTP Transport Adapter implementation
- * Provides HTTP-based communication with MCP servers
+ * HTTP Transport Adapter implementation.
+ *
+ * This module provides HTTP-based communication with MCP (Model Context Protocol) servers.
+ * It implements both the TransportAdapter interface for standard HTTP requests and
+ * the MCP Transport interface for standardized JSON-RPC communication.
+ *
+ * Key features:
+ * - Support for HTTP requests with various formats (JSON, text, binary)
+ * - Server-Sent Events (SSE) streaming support
+ * - Timeout handling with automatic request abortion
+ * - JSON-RPC message formatting and handling
+ * - Session management
+ *
+ * @module http-adapter
  */
 
 import { Transport } from '@modelcontextprotocol/sdk/shared/transport';
@@ -8,25 +20,65 @@ import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types';
 import { RequestOptions, TransportAdapter } from '../../core/types';
 
 /**
- * HTTP Adapter options
+ * Configuration options for the HTTP Adapter.
+ *
+ * These options control the behavior of the HTTP adapter
+ * including timeouts, headers, redirect handling, and base URL.
+ *
+ * @interface
  */
 export interface HTTPAdapterOptions {
-  /** Default request timeout in milliseconds */
+  /**
+   * Default request timeout in milliseconds.
+   * Requests that take longer than this will be aborted.
+   * @default 10000
+   */
   defaultTimeout?: number;
-  /** Default headers to include in all requests */
+
+  /**
+   * Default headers to include in all requests.
+   * These headers will be merged with request-specific headers.
+   * @default {}
+   */
   defaultHeaders?: Record<string, string>;
-  /** Whether to follow redirects */
+
+  /**
+   * Whether to follow HTTP redirects automatically.
+   * @default true
+   */
   followRedirects?: boolean;
-  /** Maximum number of redirects to follow */
+
+  /**
+   * Maximum number of redirects to follow before aborting.
+   * Only used when followRedirects is true.
+   * @default 5
+   */
   maxRedirects?: number;
-  /** Base URL for MCP server */
+
+  /**
+   * Base URL for the MCP server.
+   * This will be used to construct the message endpoint URL.
+   * @default ''
+   */
   baseUrl?: string;
 }
 
 /**
- * HTTP Transport Adapter
- * Implements the TransportAdapter interface for HTTP communication
- * Also implements the MCP Transport interface for standardized communication
+ * HTTP Transport Adapter class.
+ *
+ * This class provides HTTP-based communication with MCP servers.
+ * It implements both the TransportAdapter interface for standard HTTP requests
+ * and the MCP Transport interface for standardized JSON-RPC communication.
+ *
+ * The adapter supports:
+ * - Regular HTTP requests with various response formats
+ * - Streaming responses using Server-Sent Events (SSE)
+ * - JSON-RPC message handling according to the MCP specification
+ * - Timeout handling and request cancellation
+ * - Session management
+ *
+ * @implements {TransportAdapter}
+ * @implements {Transport}
  */
 export class HTTPAdapter implements TransportAdapter, Transport {
   private options: HTTPAdapterOptions;
@@ -57,8 +109,20 @@ export class HTTPAdapter implements TransportAdapter, Transport {
   }
 
   /**
-   * Starts the transport connection to the MCP server
-   * This is a required method from the MCP Transport interface
+   * Starts the transport connection to the MCP server.
+   *
+   * This method initializes the connection to the MCP server
+   * by setting up the message endpoint URL. In a more complex
+   * implementation, this might involve establishing a connection
+   * or performing a handshake with the server.
+   *
+   * For HTTP-based transport, this primarily involves setting up
+   * the endpoint URL for message exchange.
+   *
+   * This is a required method from the MCP Transport interface.
+   *
+   * @returns {Promise<void>} A promise that resolves when the connection is established
+   * @throws {Error} If the connection cannot be established
    */
   async start(): Promise<void> {
     try {
@@ -78,8 +142,18 @@ export class HTTPAdapter implements TransportAdapter, Transport {
   }
 
   /**
-   * Send a JSON-RPC message to the MCP server
-   * This is a required method from the MCP Transport interface
+   * Sends a JSON-RPC message to the MCP server.
+   *
+   * This method sends a JSON-RPC formatted message to the configured
+   * endpoint URL. The message is sent as a POST request with
+   * a JSON body. The Content-Type header is automatically set to
+   * application/json.
+   *
+   * This is a required method from the MCP Transport interface.
+   *
+   * @param {JSONRPCMessage} message - The JSON-RPC message to send
+   * @returns {Promise<void>} A promise that resolves when the message is sent
+   * @throws {Error} If the endpoint is not set or the request fails
    */
   async send(message: JSONRPCMessage): Promise<void> {
     if (!this.endpoint) {
@@ -111,10 +185,21 @@ export class HTTPAdapter implements TransportAdapter, Transport {
   }
 
   /**
-   * Send an HTTP request to the MCP server
-   * @param url Request URL
-   * @param options Request options
-   * @returns Promise resolving to the response
+   * Sends an HTTP request to the MCP server.
+   *
+   * This method sends an HTTP request to the specified URL with the provided options.
+   * It supports various request methods, headers, body formats, and response formats.
+   * The method includes automatic timeout handling and will abort the request if it
+   * takes longer than the specified timeout.
+   *
+   * Response parsing is handled automatically based on the responseFormat option.
+   * Supported formats are 'json', 'text', and 'binary'.
+   *
+   * @template T - The expected return type of the request
+   * @param {string} url - The URL to send the request to
+   * @param {RequestOptions} [options={}] - Request configuration options
+   * @returns {Promise<T>} A promise that resolves to the parsed response
+   * @throws {Error} If the request fails or times out
    */
   async request<T = any>(url: string, options: RequestOptions = {}): Promise<T> {
     const {
@@ -191,10 +276,26 @@ export class HTTPAdapter implements TransportAdapter, Transport {
   }
 
   /**
-   * Open a stream to the MCP server using Server-Sent Events
-   * @param url Stream URL
-   * @param options Request options
-   * @returns AsyncGenerator yielding stream events
+   * Opens a streaming connection to the MCP server using Server-Sent Events (SSE).
+   *
+   * This method establishes a streaming connection to the specified URL and yields
+   * events as they are received. The connection automatically sets the Accept header
+   * to 'text/event-stream' to request SSE format.
+   *
+   * The method includes automatic timeout handling and will reset the timeout
+   * on each received event. This allows for long-running connections that won't
+   * time out as long as events are being received.
+   *
+   * Events are parsed as JSON when possible and yielded as objects. If JSON parsing
+   * fails, the raw event data is yielded instead.
+   *
+   * Events that match the JSON-RPC message format are also dispatched to the
+   * onmessage callback if it's defined.
+   *
+   * @param {string} url - The URL to open the stream connection to
+   * @param {RequestOptions} [options={}] - Request configuration options
+   * @yields {any} Events received from the server
+   * @throws {Error} If the connection fails or times out
    */
   async *openStream(url: string, options: RequestOptions = {}): AsyncGenerator<any, void, unknown> {
     const {
@@ -268,11 +369,11 @@ export class HTTPAdapter implements TransportAdapter, Transport {
               // If this is a JSON-RPC message and we have an onmessage callback
               // from the MCP Transport interface, call it
               if (this.onmessage &&
-                  (parsedData.jsonrpc === '2.0' ||
-                   parsedData.id !== undefined ||
-                   parsedData.method !== undefined ||
-                   parsedData.result !== undefined ||
-                   parsedData.error !== undefined)) {
+                (parsedData.jsonrpc === '2.0' ||
+                  parsedData.id !== undefined ||
+                  parsedData.method !== undefined ||
+                  parsedData.result !== undefined ||
+                  parsedData.error !== undefined)) {
                 this.onmessage(parsedData as JSONRPCMessage);
               }
 
@@ -297,8 +398,16 @@ export class HTTPAdapter implements TransportAdapter, Transport {
   }
 
   /**
-   * Close the transport and abort any pending requests
-   * This is a required method from both the TransportAdapter and MCP Transport interfaces
+   * Closes the transport and aborts any pending requests.
+   *
+   * This method aborts any pending HTTP requests or SSE connections
+   * by signaling the abort controller. It also calls the onclose
+   * callback if it's defined.
+   *
+   * This is a required method from both the TransportAdapter and
+   * MCP Transport interfaces.
+   *
+   * @returns {Promise<void>} A promise that resolves when the transport is closed
    */
   async close(): Promise<void> {
     if (this.controller) {
