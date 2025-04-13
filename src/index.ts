@@ -1,6 +1,6 @@
 /**
  * Main entry point for the MCP Test Library.
- * This module exports all public components needed for testing MCP (Model Context Protocol) servers.
+ * This module exports all public components needed for testing MCP servers.
  *
  * The library provides:
  * - Core client for interacting with MCP servers
@@ -8,14 +8,11 @@
  * - Validation tools for requests and responses
  * - Asynchronous operation helpers
  * - Test fixtures for common testing scenarios
- * - Transport adapters for various communication methods
- *
- * @module mcp-test
  */
 
 // Core exports
-export { MCPTestClient } from './core/client';
-export { MCPServerManager } from './core/server';
+export { MCPTestClient } from "./core/client";
+export { MCPServerManager } from "./core/server";
 export {
   MCPTestClientOptions,
   MCPServerOptions,
@@ -37,26 +34,22 @@ export {
   ToolExecutionError,
   ServerStartError,
   TimeoutError
-} from './core/types';
+} from "./core/types";
 
 // Utility exports
-export { AsyncHelpers } from './utils/async';
-export { ResponseValidator } from './utils/validators';
-export { MCPValidator, MCPValidationOptions } from './utils/mcp-validators';
-export { TestFixtures } from './utils/fixtures';
+export { AsyncHelpers } from "./utils/async";
+export { ResponseValidator } from "./utils/validators";
+export { MCPValidator, MCPValidationOptions } from "./utils/mcp-validators";
+export { TestFixtures } from "./utils/fixtures";
 
-// Adapter exports
-export { HTTPAdapter, HTTPAdapterOptions } from './adapters/transport/http.js';
-export { MCPClientAdapter } from './adapter/MCPClientAdapter.js';
+// Note: HTTPAdapter is no longer used directly as we use SDK's transport
 
-// MCP SDK Client exports
-export { MCPClient } from './client/MCPClient.js';
-export { ValidatedMCPClient } from './client/ValidatedMCPClient.js';
+// SDK type exports
+export {
+  Client as SDKClient,
+  SSEClientTransport as SDKTransport,
+  TypedSDKClient
+} from './utils/sdk-types';
 
-/**
- * Current version of the MCP Test Library.
- * This version follows semantic versioning (major.minor.patch).
- *
- * @constant {string}
- */
-export const VERSION = '0.1.2';
+// Version information
+export const VERSION = "0.1.2";
